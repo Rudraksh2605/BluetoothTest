@@ -51,9 +51,26 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
                 Toast.makeText(this, "Notification permission granted!", Toast.LENGTH_SHORT).show()
+                requestBluetoothPermissions()
             } else {
                 Toast.makeText(
                     this, "Notification permission denied. Notifications won't be shown.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+
+    private val bluetoothPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val bluetoothConnectGranted = permissions[Manifest.permission.BLUETOOTH_CONNECT] == true
+            val bluetoothScanGranted = permissions[Manifest.permission.BLUETOOTH_SCAN] == true
+
+            if (bluetoothConnectGranted && bluetoothScanGranted) {
+                Toast.makeText(this, "Bluetooth permissions granted!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(
+                    this, "Bluetooth permissions denied. App functionality may be limited.",
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -67,6 +84,8 @@ class MainActivity : AppCompatActivity() {
         createNotificationChannel()
 
         requestLocationPermissions()
+
+        requestBluetoothPermissions()
 
 
         findViewById<Button>(R.id.start).setOnClickListener {
@@ -83,6 +102,18 @@ class MainActivity : AppCompatActivity() {
             )
         )
     }
+
+    private fun requestBluetoothPermissions() {
+
+            bluetoothPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN
+                )
+            )
+
+    }
+
 
     private fun askForNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
