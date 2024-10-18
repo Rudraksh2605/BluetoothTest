@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -65,8 +66,13 @@ class MainActivity : AppCompatActivity() {
         locationText = findViewById(R.id.location_text)
         createNotificationChannel()
 
-        // Request location permissions once
         requestLocationPermissions()
+
+
+        findViewById<Button>(R.id.start).setOnClickListener {
+            val bleIntent = Intent(this, BLEDeviceActivity::class.java)
+            startActivity(bleIntent)
+        }
     }
 
     private fun requestLocationPermissions() {
