@@ -1,18 +1,20 @@
 package com.hfad.bluetoothtest
 
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattService
+import android.Manifest
+import android.bluetooth.*
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -26,6 +28,8 @@ class BLEDeviceActivity : AppCompatActivity() {
     private var bluetoothGatt: BluetoothGatt? = null
     private val devices = mutableListOf<BluetoothDevice>()
 
+    private val PERMISSION_REQUEST_CODE = 100
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_ble_device)
@@ -37,18 +41,64 @@ class BLEDeviceActivity : AppCompatActivity() {
 
         bluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
 
-        // Set up RecyclerView adapter
         val adapter = BLEDeviceAdapter(devices) { device ->
             connectToDevice(device)
         }
         deviceList.adapter = adapter
 
         connectBtn.setOnClickListener {
-            startScan(adapter)
+            if (checkPermissions()) {
+                startScan(adapter)
+            } else {
+                requestPermissions()
+            }
+        }
+    }
+
+    private fun checkPermissions(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // For Android 12 and above
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
+                    ActivityCompat.checkSelfPermission(this , Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
+                    ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        } else {
+            // For older Android versions
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // For Android 12 and above
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ),
+                PERMISSION_REQUEST_CODE
+            )
+        } else {
+            // For Android 11 and below
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                PERMISSION_REQUEST_CODE
+            )
         }
     }
 
     private fun startScan(adapter: BLEDeviceAdapter) {
+        if (!checkPermissions()) {
+            Toast.makeText(
+                this,
+                "Bluetooth permissions are required to scan",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
         devices.clear()
         bluetoothLeScanner.startScan(object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult?) {
@@ -67,9 +117,18 @@ class BLEDeviceActivity : AppCompatActivity() {
     }
 
     private fun connectToDevice(device: BluetoothDevice) {
+        if (!checkPermissions()) {
+            Toast.makeText(
+                this,
+                "Bluetooth permissions are required to connect",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
         bluetoothLeScanner.stopScan(object : ScanCallback() {})
         bluetoothGatt = device.connectGatt(this, false, gattCallback)
-        displayDeviceInfo(device)  // Display device info when connecting
+        displayDeviceInfo(device)
     }
 
     private fun displayDeviceInfo(device: BluetoothDevice) {
@@ -111,5 +170,24 @@ class BLEDeviceActivity : AppCompatActivity() {
         super.onDestroy()
         bluetoothGatt?.close()
         bluetoothGatt = null
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Bluetooth permissions granted!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Bluetooth permissions denied. App functionality may be limited.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 }

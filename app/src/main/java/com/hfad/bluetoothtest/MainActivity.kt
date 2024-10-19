@@ -1,6 +1,7 @@
 package com.hfad.bluetoothtest
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -22,6 +23,7 @@ class MainActivity : AppCompatActivity() {
     private val locationChannelId = "location_updates_channel"
     private val notificationId = 2
 
+    @SuppressLint("UnsafeProtectedBroadcastReceiver")
     private val locationReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val latitude = intent.getDoubleExtra(LocationService.EXTRA_LATITUDE, 0.0)
@@ -30,6 +32,7 @@ class MainActivity : AppCompatActivity() {
             showLocationUpdateNotification(latitude, longitude)
         }
     }
+
 
     private val locationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -128,8 +131,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        val filter = IntentFilter(LocationService.ACTION_LOCATION_BROADCAST)
-        registerReceiver(locationReceiver, filter)
+        val filter = IntentFilter(LocationService.ACTION_LOCATION_BROADCAST).apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        registerReceiver(locationReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onStop() {
